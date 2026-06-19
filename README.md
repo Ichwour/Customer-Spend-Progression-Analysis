@@ -136,7 +136,6 @@ WHERE later_purchases >= 2
 ORDER BY avg_price_growth_ratio DESC, later_revenue DESC;
 ```
 
-Full query: [`sql/01_first_vs_later_behavior.sql`](sql/01_first_vs_later_behavior.sql)
 
 ## Result
 
@@ -155,7 +154,7 @@ Full query: [`sql/01_first_vs_later_behavior.sql`](sql/01_first_vs_later_behavio
 
 ## Visualization
 
-![First Purchase vs Later Revenue](images/first_vs_later_revenue.png)
+![First vs Later Average Purchase Price](images/First vs Later Average Purchase Price.png)
 
 ## Local Conclusion
 
