@@ -154,7 +154,7 @@ ORDER BY avg_price_growth_ratio DESC, later_revenue DESC;
 
 ## Visualization
 
-![First vs Later Average Purchase Price](images/First vs Later Average Purchase Price.png)
+![First vs Later Average Purchase Price](images/First_vs_Later_Average_Purchase_Price.png)
 
 ## Local Conclusion
 
