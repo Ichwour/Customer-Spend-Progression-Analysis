@@ -22,14 +22,6 @@ The business question is:
 
 ---
 
-## Dataset
-
-The analysis is based on anonymized e-commerce purchase data.
-
-The original dataset included customer-level purchase events, product attributes, timestamps, prices, sessions, and product identifiers.
-
----
-
 ## Tools Used
 
 * SQL / DuckDB
@@ -75,17 +67,91 @@ This analysis compares the first purchase with later customer behavior. It check
 The query separates each customer’s first purchase from later purchases, then compares early and later behavior.
 
 ```sql
+WITH purchase_baskets AS (
+    SELECT
+        client_id,
+        session_id,
+        event_time,
+        SUM(price) AS basket_revenue,
+        AVG(price) AS basket_avg_price,
+        COUNT(DISTINCT product_id) AS basket_products
+    FROM events
+    WHERE event_type = 'purchase'
+      AND product_category = 'wine'
+      AND client_id IS NOT NULL
+      AND session_id IS NOT NULL
+      AND event_time IS NOT NULL
+      AND price IS NOT NULL
+      AND product_id IS NOT NULL
+    GROUP BY client_id, session_id, event_time
+),
 
+purchase_order AS (
+    SELECT
+        client_id,
+        session_id,
+        event_time,
+        basket_revenue,
+        basket_avg_price,
+        basket_products,
+        ROW_NUMBER() OVER (
+            PARTITION BY client_id
+            ORDER BY event_time ASC
+        ) AS purchase_number
+    FROM purchase_baskets
+),
+
+first_vs_later AS (
+    SELECT
+        client_id,
+
+        MAX(CASE WHEN purchase_number = 1 THEN basket_revenue END) AS first_basket_revenue,
+        MAX(CASE WHEN purchase_number = 1 THEN basket_avg_price END) AS first_basket_avg_price,
+
+        COUNT(CASE WHEN purchase_number > 1 THEN 1 END) AS later_purchases,
+        SUM(CASE WHEN purchase_number > 1 THEN basket_revenue ELSE 0 END) AS later_revenue,
+        AVG(CASE WHEN purchase_number > 1 THEN basket_avg_price END) AS later_avg_price,
+        SUM(CASE WHEN purchase_number > 1 THEN basket_products ELSE 0 END) AS later_products_count,
+
+        AVG(CASE WHEN purchase_number > 1 THEN basket_avg_price END)
+            / NULLIF(MAX(CASE WHEN purchase_number = 1 THEN basket_avg_price END), 0)
+            AS avg_price_growth_ratio
+    FROM purchase_order
+    GROUP BY client_id
+)
+
+SELECT
+    client_id,
+    ROUND(first_basket_revenue, 2) AS first_basket_revenue,
+    ROUND(first_basket_avg_price, 2) AS first_basket_avg_price,
+    later_purchases,
+    ROUND(later_revenue, 2) AS later_revenue,
+    ROUND(later_avg_price, 2) AS later_avg_price,
+    later_products_count,
+    ROUND(avg_price_growth_ratio, 4) AS avg_price_growth_ratio
+FROM first_vs_later
+WHERE later_purchases >= 2
+  AND later_revenue >= 300
+  AND avg_price_growth_ratio >= 1.3
+ORDER BY avg_price_growth_ratio DESC, later_revenue DESC;
 ```
 
 Full query: [`sql/01_first_vs_later_behavior.sql`](sql/01_first_vs_later_behavior.sql)
 
 ## Result
 
-
 | customer_id  | first_purchase_revenue | first_avg_price | later_purchases | later_revenue | later_avg_price | later_distinct_products | avg_price_growth_ratio |
 | ------------ | ---------------------: | --------------: | --------------: | ------------: | --------------: | ----------------------: | ---------------------: |
-| customer_001 |                [value] |         [value] |         [value] |       [value] |         [value] |                 [value] |                [value] |
+| client_04552 |                  10.00 |           10.00 |              13 |      7,097.40 |          545.95 |                       9 |                54.5954 |
+| client_03059 |                  15.00 |           15.00 |              23 |     11,277.00 |          490.30 |                      23 |                32.6870 |
+| client_02345 |                  76.00 |           19.00 |              23 |     12,404.60 |          539.33 |                      22 |                28.3858 |
+| client_01526 |                  22.00 |           22.00 |              34 |     19,043.00 |          560.09 |                      34 |                25.4586 |
+| client_03638 |                  18.00 |           18.00 |              14 |      5,995.10 |          428.22 |                      13 |                23.7901 |
+| client_03768 |                  70.00 |           23.33 |              16 |      7,850.00 |          490.63 |                      16 |                21.0268 |
+| client_04449 |                  14.00 |           14.00 |              16 |      3,548.00 |          221.75 |                      16 |                15.8393 |
+| client_00066 |                  55.00 |           13.75 |              17 |      3,565.00 |          209.71 |                      17 |                15.2513 |
+| client_00989 |                  22.00 |            7.33 |               6 |        634.10 |          105.68 |                       6 |                14.4114 |
+| client_02338 |                  27.00 |           13.50 |               6 |      1,129.00 |          188.17 |                       6 |                13.9383 |
 
 ## Visualization
 
@@ -93,8 +159,11 @@ Full query: [`sql/01_first_vs_later_behavior.sql`](sql/01_first_vs_later_behavio
 
 ## Local Conclusion
 
+The analysis shows that several customers started with low or moderate first purchases but later generated much higher purchase value. For example, the strongest cases had later average purchase prices from 13.9x to 54.6x higher than their first purchase average price.
 
+This suggests that first purchase value alone is a weak indicator of long-term customer potential. Some customers who initially look low-value can later become high-value repeat buyers with significantly higher revenue and broader product activity.
 
+However, the highest growth ratios should be interpreted carefully, because very small first purchases can inflate the ratio. For this reason, later revenue, repeat purchase count, and distinct product count should be considered together with the growth ratio.
 
 ---
 
