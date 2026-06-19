@@ -28,23 +28,13 @@ The analysis is based on anonymized e-commerce purchase data.
 
 The original dataset included customer-level purchase events, product attributes, timestamps, prices, sessions, and product identifiers.
 
-For privacy and commercial confidentiality:
-
-* Raw data is not published.
-* Customer identifiers are anonymized.
-* Product identifiers are anonymized.
-* Sensitive business-specific fields are removed or generalized.
-* The project focuses on analytical logic, SQL methods, and business interpretation.
-
 ---
 
 ## Tools Used
 
-* SQL
-* DuckDB
+* SQL / DuckDB
 * Python / pandas
-* Tableau / data visualization
-* GitHub documentation
+* Tableau
 
 ---
 
@@ -68,14 +58,7 @@ Main techniques used:
 
 ## Key Findings
 
-[INSERT 2–4 SHORT BULLETS AFTER YOU GET FINAL RESULTS]
 
-Example format:
-
-* [x] customers crossed the high-value revenue threshold after their first purchase.
-* [X]% of selected customers had later average basket value at least [Y]% higher than their first basket.
-* The strongest spend uplift cases showed basket revenue at least [X] times higher than the previous customer baseline.
-* Some customers started with modest first purchases but later became high-value repeat buyers.
 
 ---
 
@@ -92,22 +75,13 @@ This analysis compares the first purchase with later customer behavior. It check
 The query separates each customer’s first purchase from later purchases, then compares early and later behavior.
 
 ```sql
-[INSERT SHORT SQL SNIPPET HERE]
 
--- Recommended snippet:
--- first_purchase CTE
--- later CTE
--- avg_price_growth_ratio calculation
--- final WHERE filters
 ```
 
 Full query: [`sql/01_first_vs_later_behavior.sql`](sql/01_first_vs_later_behavior.sql)
 
 ## Result
 
-[INSERT RESULT TABLE HERE]
-
-Recommended columns:
 
 | customer_id  | first_purchase_revenue | first_avg_price | later_purchases | later_revenue | later_avg_price | later_distinct_products | avg_price_growth_ratio |
 | ------------ | ---------------------: | --------------: | --------------: | ------------: | --------------: | ----------------------: | ---------------------: |
@@ -119,11 +93,8 @@ Recommended columns:
 
 ## Local Conclusion
 
-[INSERT LOCAL CONCLUSION HERE]
 
-Example:
 
-The analysis shows that some customers with relatively modest first purchases later generated significantly higher revenue. This suggests that first purchase value alone is not enough to estimate long-term customer potential.
 
 ---
 
