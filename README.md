@@ -605,29 +605,26 @@ However, the result should be interpreted carefully. In many cases, the block-le
 
 ---
 
-# Overall Business Conclusion
+## Overall Conclusion
 
-[INSERT FINAL CONCLUSION HERE]
+This project analyzed customer spend progression using SQL window functions, customer-level purchase history, cumulative revenue tracking, and rolling behavioral baselines.
 
-Example:
+The analysis shows that customer value is not always visible from the first purchase. Some customers start with low or moderate basket values but later generate much higher revenue. Several high-value customers crossed the €500 cumulative revenue threshold within the first few repeat purchases, while others showed sudden spend uplift after a longer low-value history.
 
-The analysis shows that customer value progression cannot be understood only from the first purchase. Some customers start with moderate baskets but later become high-value through repeat purchases, higher basket value, or sudden spend uplift.
+The strongest pattern across the analyses is that customer value often changes non-linearly. Customers may remain low-value for multiple purchases or purchase blocks, then suddenly generate a high-value basket or a high-value 3-purchase block. This makes simple first-purchase segmentation insufficient for detecting future high-value potential.
 
-From a business perspective, these customers are important because they may be missed by simple first-order segmentation. Tracking cumulative revenue, purchase number, spend uplift, and basket progression can help the business identify customers suitable for CRM campaigns, loyalty incentives, premium recommendations, and retention actions.
+At the same time, the results should be interpreted carefully. Some extreme uplift ratios are caused by very small previous baselines, and several block-level jumps are driven by one large basket rather than a stable long-term increase. For this reason, revenue, purchase frequency, basket size, and rolling baselines should be reviewed together.
 
 ---
 
-# Business Recommendations
+## Business Implications
 
-[INSERT 3–5 RECOMMENDATIONS HERE]
+Early repeat purchases are important signals for identifying customers with high-value potential. Customers who cross meaningful revenue thresholds within their first few purchases may be suitable for CRM follow-up, loyalty actions, or premium product recommendations.
 
-Example:
+Sudden uplift events should be monitored separately from gradual customer growth. A customer who suddenly moves from small baskets to a large premium basket may require a different retention or recommendation strategy than a customer whose spend increases steadily over time.
 
-* Track customers whose later basket value grows significantly compared to their first purchase.
-* Create a CRM segment for customers approaching the high-value revenue threshold.
-* Monitor sudden spend uplift as a signal for premium product interest.
-* Use customer-level spend progression as an input for recommendation and loyalty campaigns.
-* Avoid judging long-term customer value only by the first purchase.
+Customer segmentation should not rely only on first purchase value. A more useful approach is to combine cumulative revenue, purchase number, recent basket behavior, and rolling spend baselines to detect both early high-value customers and late-emerging premium-intent customers.
+
 
 ---
 
@@ -642,6 +639,4 @@ Example:
 * Business KPI interpretation
 * Data anonymization awareness
 * Analytical storytelling
-* Portfolio-ready documentation
-
 ---
