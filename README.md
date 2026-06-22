@@ -284,7 +284,7 @@ This suggests that early repeat purchases are an important signal for identifyin
 
 The result table adds another layer: in many top cases, the threshold was crossed through a single large basket after relatively low previous cumulative revenue. Therefore, the business should distinguish between customers who become high-value gradually and customers who cross the threshold suddenly due to one premium purchase.
 
-The first purchase is excluded from this analysis because the goal is to detect customers who became high-value after repeated purchase behavior, not customers who were already high-value from the first order.
+
 ---
 
 # Analysis 3: Spend Uplift Detection
