@@ -413,44 +413,6 @@ Example:
 
 ---
 
-# Limitations
-
-* The dataset contains anonymized historical purchase data.
-* Raw commercial data is not included in this repository.
-* The analysis is based on observed purchase behavior, not full customer intent.
-* The project does not include marketing exposure, acquisition channel, or customer demographics.
-* Revenue thresholds are analytical assumptions and should be adjusted based on real business context.
-* The analysis identifies behavioral patterns but does not prove causality.
-
----
-
-# Project Structure
-
-```text
-customer-spend-progression-analysis/
-│
-├── README.md
-├── sql/
-│   ├── 01_first_vs_later_behavior.sql
-│   ├── 02_high_value_threshold_crossing.sql
-│   ├── 03_spend_uplift_detection.sql
-│   └── 04_spend_rhythm_by_blocks.sql
-│
-├── images/
-│   ├── first_vs_later_revenue.png
-│   ├── high_value_threshold_crossing.png
-│   ├── spend_uplift_detection.png
-│   └── spend_rhythm_by_blocks.png
-│
-├── notebooks/
-│   └── analysis_validation.ipynb
-│
-└── data_sample/
-    └── anonymized_sample.csv
-```
-
----
-
 # Skills Demonstrated
 
 * SQL data analysis
@@ -465,11 +427,3 @@ customer-spend-progression-analysis/
 * Portfolio-ready documentation
 
 ---
-
-# Summary
-
-This project demonstrates how SQL can be used to identify customer value progression in real-world e-commerce purchase data.
-
-The analysis focuses on customers who become more valuable over time, cross high-value revenue thresholds, or show sudden spend uplift compared to their own previous behavior.
-
-The main business value is the ability to support CRM, retention, loyalty, and recommendation strategies with customer-level behavioral analysis.
