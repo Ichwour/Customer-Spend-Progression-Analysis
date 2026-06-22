@@ -74,6 +74,9 @@ This analysis compares the first purchase with later customer behavior. It check
 
 The query separates each customer’s first purchase from later purchases, then compares early and later behavior.
 
+<details>
+<summary>View SQL query</summary>
+
 ```sql
 WITH purchase_baskets AS (
     SELECT
@@ -144,6 +147,7 @@ WHERE later_purchases >= 2
 ORDER BY avg_price_growth_ratio DESC, later_revenue DESC;
 ```
 
+</details>
 
 ## Result
 
@@ -187,6 +191,9 @@ The goal is to understand how many purchases it takes for customers to become va
 ## SQL Logic
 
 The query calculates basket revenue, purchase order number, cumulative revenue, previous cumulative revenue, and the number of days from the first purchase.
+
+<details>
+<summary>View SQL query</summary>
 
 ```sql
 WITH purchase_baskets AS (
@@ -255,6 +262,8 @@ WHERE cumulative_revenue >= 500
 ORDER BY cumulative_revenue DESC;
 ```
 
+</details>
+
 ## Result
 
 | customer_id  | purchase_number | basket_revenue | cumulative_revenue | previous_cumulative_revenue | days_from_first_purchase |
@@ -292,7 +301,6 @@ This suggests that early repeat purchases are an important signal for identifyin
 
 The result table adds another layer: in many top cases, the threshold was crossed through a single large basket after relatively low previous cumulative revenue. Therefore, the business should distinguish between customers who become high-value gradually and customers who cross the threshold suddenly due to one premium purchase.
 
-
 ---
 
 # Analysis 3: Spend Uplift Detection
@@ -308,6 +316,9 @@ Instead of comparing customers to the global average, the query compares each cu
 ## SQL Logic
 
 The query uses window functions to calculate previous basket revenue, rolling average basket revenue, rolling maximum basket revenue, and spend uplift ratio.
+
+<details>
+<summary>View SQL query</summary>
 
 ```sql
 WITH purchase_baskets AS (
@@ -420,6 +431,8 @@ WHERE previous_baskets_count >= 3
 ORDER BY spend_uplift_ratio DESC, basket_revenue DESC;
 ```
 
+</details>
+
 ## Result
 
 | customer_id  | purchase_number | basket_revenue | basket_items | avg_previous_3_basket_revenue | max_previous_3_basket_revenue | stake_jump_ratio | days_since_last_purchase |
@@ -449,7 +462,7 @@ However, the highest uplift ratios should be interpreted carefully. Many ratios 
 
 ---
 
-# Optional Analysis 4: Spend Rhythm Break by Purchase Blocks
+# Analysis 4: Spend Rhythm Break by Purchase Blocks
 
 ## Business Question
 
@@ -580,6 +593,8 @@ WHERE purchase_block >= 2
 ORDER BY block_jump_ratio DESC, block_revenue DESC
 LIMIT 10;
 ```
+
+</details>
 
 ## Result
 
