@@ -302,27 +302,130 @@ Instead of comparing customers to the global average, the query compares each cu
 The query uses window functions to calculate previous basket revenue, rolling average basket revenue, rolling maximum basket revenue, and spend uplift ratio.
 
 ```sql
-[INSERT SHORT SQL SNIPPET HERE]
+WITH purchase_baskets AS (
+    SELECT
+        client_id,
+        session_id,
+        event_time AS purchase_time,
+        SUM(price) AS basket_revenue,
+        COUNT(*) AS basket_items
+    FROM events
+    WHERE event_type = 'purchase'
+      AND product_category = 'wine'
+      AND client_id IS NOT NULL
+      AND session_id IS NOT NULL
+      AND event_time IS NOT NULL
+      AND price IS NOT NULL
+    GROUP BY client_id, session_id, event_time
+),
 
--- Recommended snippet:
--- LAG(previous purchase time)
--- LAG(previous basket revenue)
--- AVG(basket_revenue) over previous 3 baskets
--- MAX(basket_revenue) over previous 3 baskets
--- stake_jump_ratio
+purchase_history AS (
+    SELECT
+        client_id,
+        session_id,
+        purchase_time,
+        basket_revenue,
+        basket_items,
+        ROW_NUMBER() OVER (
+            PARTITION BY client_id
+            ORDER BY purchase_time ASC
+        ) AS purchase_number
+    FROM purchase_baskets
+),
+
+previous_behavior AS (
+    SELECT
+        client_id,
+        session_id,
+        purchase_time,
+        purchase_number,
+        basket_revenue,
+        basket_items,
+
+        LAG(purchase_time) OVER (
+            PARTITION BY client_id
+            ORDER BY purchase_number ASC
+        ) AS previous_purchase_time,
+
+        LAG(basket_revenue) OVER (
+            PARTITION BY client_id
+            ORDER BY purchase_number ASC
+        ) AS previous_basket_revenue,
+
+        AVG(basket_revenue) OVER (
+            PARTITION BY client_id
+            ORDER BY purchase_number ASC
+            ROWS BETWEEN 3 PRECEDING AND 1 PRECEDING
+        ) AS avg_previous_3_basket_revenue,
+
+        MAX(basket_revenue) OVER (
+            PARTITION BY client_id
+            ORDER BY purchase_number ASC
+            ROWS BETWEEN 3 PRECEDING AND 1 PRECEDING
+        ) AS max_previous_3_basket_revenue,
+
+        purchase_number - 1 AS previous_baskets_count
+    FROM purchase_history
+),
+
+spend_uplift AS (
+    SELECT
+        client_id,
+        purchase_time,
+        purchase_number,
+        basket_revenue,
+        basket_items,
+        DATE_DIFF('day', previous_purchase_time, purchase_time) AS days_since_last_purchase,
+        previous_basket_revenue,
+        avg_previous_3_basket_revenue,
+        max_previous_3_basket_revenue,
+        previous_baskets_count,
+
+        basket_revenue * 1.0
+            / NULLIF(avg_previous_3_basket_revenue, 0) AS spend_uplift_ratio,
+
+        CASE
+            WHEN basket_revenue > max_previous_3_basket_revenue THEN 1
+            ELSE 0
+        END AS is_new_high_value_basket
+    FROM previous_behavior
+)
+
+SELECT
+    client_id,
+    purchase_time,
+    purchase_number,
+    ROUND(basket_revenue, 2) AS basket_revenue,
+    basket_items,
+    days_since_last_purchase,
+    ROUND(previous_basket_revenue, 2) AS previous_basket_revenue,
+    ROUND(avg_previous_3_basket_revenue, 2) AS avg_previous_3_basket_revenue,
+    ROUND(max_previous_3_basket_revenue, 2) AS max_previous_3_basket_revenue,
+    previous_baskets_count,
+    ROUND(spend_uplift_ratio, 4) AS spend_uplift_ratio,
+    is_new_high_value_basket
+FROM spend_uplift
+WHERE previous_baskets_count >= 3
+  AND basket_revenue >= 200
+  AND spend_uplift_ratio >= 3
+  AND days_since_last_purchase <= 60
+ORDER BY spend_uplift_ratio DESC, basket_revenue DESC;
 ```
-
-Full query: [`sql/03_spend_uplift_detection.sql`](sql/03_spend_uplift_detection.sql)
 
 ## Result
 
-[INSERT RESULT TABLE HERE]
-
-Recommended columns:
-
-| customer_id  | purchase_number | basket_revenue | avg_previous_3_basket_revenue | max_previous_3_basket_revenue | stake_jump_ratio | days_since_last_purchase |
-| ------------ | --------------: | -------------: | ----------------------------: | ----------------------------: | ---------------: | -----------------------: |
-| customer_001 |         [value] |        [value] |                       [value] |                       [value] |          [value] |                  [value] |
+| customer_id  | purchase_number | basket_revenue | basket_items | avg_previous_3_basket_revenue | max_previous_3_basket_revenue | stake_jump_ratio | days_since_last_purchase |
+| ------------ | --------------: | -------------: | -----------: | ----------------------------: | ----------------------------: | ---------------: | -----------------------: |
+| client_04636 |             146 |       7,045.00 |            7 |                         12.00 |                         15.00 |           587.08 |                        1 |
+| client_01785 |              16 |      14,800.00 |            3 |                         30.33 |                         73.00 |           487.91 |                       20 |
+| client_03638 |               4 |       5,790.00 |            5 |                         17.00 |                         18.00 |           340.59 |                        0 |
+| client_04552 |               4 |       2,770.00 |            3 |                         10.60 |                         12.00 |           261.32 |                       28 |
+| client_03768 |              15 |       5,000.00 |            1 |                         21.33 |                         33.00 |           234.38 |                        0 |
+| client_02345 |               5 |      11,615.00 |            2 |                         52.00 |                         67.00 |           223.37 |                       28 |
+| client_02038 |               4 |       9,920.00 |            3 |                         55.67 |                         85.00 |           178.20 |                        0 |
+| client_00556 |               5 |       2,767.00 |            5 |                         15.67 |                         20.00 |           176.62 |                        0 |
+| client_01685 |              23 |       2,410.00 |            2 |                         13.67 |                         15.00 |           176.34 |                        8 |
+| client_04441 |              81 |       2,939.00 |            8 |                         17.00 |                         29.00 |           172.88 |                       55 |
 
 ## Visualization
 
@@ -330,11 +433,11 @@ Recommended columns:
 
 ## Local Conclusion
 
-[INSERT LOCAL CONCLUSION HERE]
+The analysis identifies customers whose current basket value sharply exceeded their own recent purchase baseline. In the strongest cases, basket revenue was more than 170x higher than the average of the previous 3 baskets, and every selected case also created a new high-value basket compared to the customer’s recent maximum.
 
-Example:
+This suggests that sudden premium-intent behavior can appear even after a long history of low-value baskets. These customers may be useful for CRM follow-up, premium product recommendations, or manual review of high-value purchasing patterns.
 
-The spend uplift logic highlights customers whose current basket is significantly larger than their own recent baseline. These customers may be strong candidates for premium offers, loyalty actions, or personalized recommendations.
+However, the highest uplift ratios should be interpreted carefully. Many ratios are extremely large because the previous 3 baskets were very small, not only because the current basket was large. For this reason, `basket_revenue`, `avg_previous_3_basket_revenue`, `max_previous_3_basket_revenue`, and `basket_items` should be reviewed together instead of relying only on `stake_jump_ratio`.
 
 ---
 
@@ -360,8 +463,6 @@ This gives a more stable view of customer value progression.
 -- rolling average of previous blocks
 -- block_jump_ratio
 ```
-
-Full query: [`sql/04_spend_rhythm_by_blocks.sql`](sql/04_spend_rhythm_by_blocks.sql)
 
 ## Result
 
