@@ -474,6 +474,9 @@ This gives a more stable view of customer value progression.
 
 ## SQL Logic
 
+<details>
+<summary>View SQL query</summary>
+
 ```sql
 WITH purchase_baskets AS (
     SELECT
