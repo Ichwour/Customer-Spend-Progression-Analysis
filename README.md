@@ -454,37 +454,154 @@ This gives a more stable view of customer value progression.
 ## SQL Logic
 
 ```sql
-[INSERT SHORT SQL SNIPPET HERE]
+WITH purchase_baskets AS (
+    SELECT
+        client_id,
+        event_time AS purchase_time,
+        SUM(price) AS basket_revenue,
+        COUNT(*) AS basket_items
+    FROM events
+    WHERE event_type = 'purchase'
+      AND product_category = 'wine'
+      AND client_id IS NOT NULL
+      AND event_time IS NOT NULL
+      AND product_id IS NOT NULL
+      AND price IS NOT NULL
+    GROUP BY client_id, event_time
+),
 
--- Recommended snippet:
--- FLOOR((ROW_NUMBER() - 1) / 3) AS block
--- block-level revenue
--- previous block revenue
--- rolling average of previous blocks
--- block_jump_ratio
+purchase_blocks AS (
+    SELECT
+        client_id,
+        purchase_time,
+        basket_revenue,
+        basket_items,
+        FLOOR(
+            (ROW_NUMBER() OVER (
+                PARTITION BY client_id
+                ORDER BY purchase_time ASC
+            ) - 1) / 3
+        ) AS purchase_block
+    FROM purchase_baskets
+),
+
+block_stats AS (
+    SELECT
+        client_id,
+        purchase_block,
+        COUNT(*) AS block_purchases,
+        MIN(purchase_time) AS block_start,
+        MAX(purchase_time) AS block_end,
+        SUM(basket_items) AS block_items,
+        SUM(basket_revenue) AS block_revenue,
+        MIN(basket_revenue) AS min_basket_revenue_in_block,
+        MAX(basket_revenue) AS max_basket_revenue_in_block,
+        AVG(basket_revenue) AS avg_basket_revenue_in_block
+    FROM purchase_blocks
+    GROUP BY client_id, purchase_block
+),
+
+block_comparison AS (
+    SELECT
+        client_id,
+        purchase_block,
+        block_purchases,
+        block_start,
+        block_end,
+        block_items,
+        block_revenue,
+        min_basket_revenue_in_block,
+        max_basket_revenue_in_block,
+        avg_basket_revenue_in_block,
+
+        DATE_DIFF(
+            'day',
+            LAG(block_end) OVER previous_block,
+            block_start
+        ) AS days_since_last_block,
+
+        LAG(block_revenue) OVER previous_block AS previous_block_revenue,
+
+        AVG(block_revenue) OVER previous_2_blocks AS avg_previous_2_blocks_revenue,
+        MAX(block_revenue) OVER previous_2_blocks AS max_previous_2_blocks_revenue,
+
+        block_revenue * 1.0
+            / NULLIF(AVG(block_revenue) OVER previous_2_blocks, 0)
+            AS block_jump_ratio,
+
+        CASE
+            WHEN block_revenue > MAX(block_revenue) OVER previous_2_blocks
+            THEN 1
+            ELSE 0
+        END AS is_new_high_value_block
+
+    FROM block_stats
+
+    WINDOW
+        previous_block AS (
+            PARTITION BY client_id
+            ORDER BY purchase_block ASC
+        ),
+
+        previous_2_blocks AS (
+            PARTITION BY client_id
+            ORDER BY purchase_block ASC
+            ROWS BETWEEN 2 PRECEDING AND 1 PRECEDING
+        )
+)
+
+SELECT
+    client_id,
+    purchase_block,
+    block_purchases,
+    block_start,
+    block_end,
+    block_items,
+    ROUND(block_revenue, 2) AS block_revenue,
+    ROUND(avg_previous_2_blocks_revenue, 2) AS avg_previous_2_blocks_revenue,
+    ROUND(max_previous_2_blocks_revenue, 2) AS max_previous_2_blocks_revenue,
+    ROUND(block_jump_ratio, 4) AS block_jump_ratio,
+    days_since_last_block,
+    is_new_high_value_block
+FROM block_comparison
+WHERE purchase_block >= 2
+  AND block_purchases = 3
+  AND avg_previous_2_blocks_revenue IS NOT NULL
+  AND block_revenue >= 300
+  AND block_jump_ratio >= 2
+ORDER BY block_jump_ratio DESC, block_revenue DESC
+LIMIT 10;
 ```
 
 ## Result
 
-[INSERT RESULT TABLE HERE]
-
-Recommended columns:
-
-| customer_id  |   block | block_purchases | block_revenue | avg_previous_2_blocks_revenue | block_jump_ratio | days_since_last_block |
-| ------------ | ------: | --------------: | ------------: | ----------------------------: | ---------------: | --------------------: |
-| customer_001 | [value] |         [value] |       [value] |                       [value] |          [value] |               [value] |
+| customer_id  | block | block_purchases | block_items | block_revenue | avg_previous_2_blocks_revenue | max_previous_2_blocks_revenue | block_jump_ratio | days_since_last_block | is_block_high |
+| ------------ | ----: | --------------: | ----------: | ------------: | ----------------------------: | ----------------------------: | ---------------: | --------------------: | ------------: |
+| client_01785 |     5 |               3 |           5 |     14,828.00 |                         91.00 |                         91.00 |           162.95 |                    20 |             1 |
+| client_03768 |     4 |               3 |           3 |      5,049.00 |                         57.50 |                         72.00 |            87.81 |                     0 |             1 |
+| client_04636 |    48 |               3 |           9 |      7,066.00 |                        126.25 |                        130.00 |            55.97 |                     0 |             1 |
+| client_04441 |    26 |               3 |          11 |      2,979.00 |                         82.50 |                        111.00 |            36.11 |                     0 |             1 |
+| client_01878 |    11 |               3 |          12 |      2,339.00 |                         69.00 |                         69.00 |            33.90 |                    31 |             1 |
+| client_03958 |     3 |               3 |           6 |     12,072.00 |                        377.00 |                        393.00 |            32.02 |                     0 |             1 |
+| client_03131 |     5 |               3 |           5 |      1,589.00 |                         53.00 |                         58.00 |            29.98 |                     0 |             1 |
+| client_03645 |    10 |               3 |           5 |      3,087.00 |                        126.25 |                        151.50 |            24.45 |                     0 |             1 |
+| client_01743 |     2 |               3 |          33 |      2,125.50 |                         91.00 |                        117.00 |            23.36 |                     0 |             1 |
+| client_03942 |     2 |               3 |          26 |     11,313.00 |                        517.00 |                        761.00 |            21.88 |                     0 |             1 |
 
 ## Visualization
 
 ![Spend Rhythm by Blocks](images/spend_rhythm_by_blocks.png)
 
+
 ## Local Conclusion
 
-[INSERT LOCAL CONCLUSION HERE]
+This analysis groups customer purchase history into blocks of 3 purchases and compares each block against the previous 2 blocks. The selected cases show a clear break from the customer’s previous spending rhythm: every listed block is at least 21x higher than the recent 2-block average and also exceeds the previous high-value block level.
 
-Example:
+The strongest case is `client_01785`, whose current 3-purchase block reached €14,828 compared with a previous 2-block average of only €91. Similar patterns appear for several other customers, where block revenue jumps from a low historical baseline to several thousand euros.
 
-Block-level analysis reduces the noise of individual baskets and shows broader shifts in customer behavior. This is useful when the business wants to detect sustained value growth rather than isolated high-value purchases.
+This suggests that some customers do not grow gradually. Instead, they can remain low-value for multiple purchase blocks and then suddenly generate a much higher-value block. These cases are useful for identifying changes in customer value, premium-intent behavior, or moments where CRM follow-up may be justified.
+
+However, the result should be interpreted carefully. In many cases, the block-level jump is driven by one very large basket inside the 3-purchase block, rather than three consistently high purchases. Therefore, this analysis is best understood as a broader spend-rhythm break detector, not as proof of stable long-term customer upgrade.
 
 ---
 
