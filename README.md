@@ -50,7 +50,15 @@ Main techniques used:
 
 ## Key Findings
 
+* First purchase value alone is not enough to estimate long-term customer potential. Some customers started with low or moderate baskets but later generated much higher revenue.
 
+* Many customers crossed the €500 cumulative revenue threshold within their first few repeat purchases, especially around the 2nd–5th purchase.
+
+* Sudden spend uplift can appear after a long low-value history. Several customers moved from small recent baskets to a much larger premium basket.
+
+* Block-level analysis showed broader spend rhythm breaks, where a 3-purchase block became significantly larger than the previous 2-block baseline.
+
+* Extreme uplift ratios should be interpreted carefully because they can be inflated by very small previous baselines. Revenue, basket size, purchase number, and rolling averages should be reviewed together.
 
 ---
 
