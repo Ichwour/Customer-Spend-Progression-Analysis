@@ -181,26 +181,108 @@ The goal is to understand how many purchases it takes for customers to become va
 The query calculates basket revenue, purchase order number, cumulative revenue, previous cumulative revenue, and the number of days from the first purchase.
 
 ```sql
-[INSERT SHORT SQL SNIPPET HERE]
+WITH purchase_baskets AS (
+    SELECT
+        client_id,
+        session_id,
+        event_time,
+        SUM(price) AS basket_revenue
+    FROM events
+    WHERE event_type = 'purchase'
+      AND product_category = 'wine'
+      AND client_id IS NOT NULL
+      AND session_id IS NOT NULL
+      AND event_time IS NOT NULL
+      AND price IS NOT NULL
+    GROUP BY client_id, session_id, event_time
+),
 
--- Recommended snippet:
--- ROW_NUMBER() over customer purchase history
--- SUM(revenue) OVER cumulative revenue
--- previous_cumulative_revenue
--- threshold filter
+purchase_sequence AS (
+    SELECT
+        client_id,
+        session_id,
+        event_time,
+        basket_revenue,
+        ROW_NUMBER() OVER (
+            PARTITION BY client_id
+            ORDER BY event_time ASC
+        ) AS purchase_number,
+        SUM(basket_revenue) OVER (
+            PARTITION BY client_id
+            ORDER BY event_time ASC
+            ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+        ) AS cumulative_revenue,
+        MIN(event_time) OVER (
+            PARTITION BY client_id
+        ) AS first_purchase_time
+    FROM purchase_baskets
+),
+
+threshold_crossing AS (
+    SELECT
+        client_id,
+        session_id,
+        event_time,
+        purchase_number,
+        basket_revenue,
+        cumulative_revenue,
+        cumulative_revenue - basket_revenue AS previous_cumulative_revenue,
+        DATE_DIFF('day', first_purchase_time, event_time) AS days_from_first_purchase
+    FROM purchase_sequence
+)
+
+SELECT
+    client_id,
+    session_id,
+    event_time,
+    purchase_number,
+    ROUND(basket_revenue, 2) AS basket_revenue,
+    ROUND(cumulative_revenue, 2) AS cumulative_revenue,
+    ROUND(previous_cumulative_revenue, 2) AS previous_cumulative_revenue,
+    days_from_first_purchase
+FROM threshold_crossing
+WHERE cumulative_revenue >= 500
+  AND previous_cumulative_revenue < 500
+  AND purchase_number >= 2
+ORDER BY cumulative_revenue DESC;
 ```
 
 Full query: [`sql/02_high_value_threshold_crossing.sql`](sql/02_high_value_threshold_crossing.sql)
 
 ## Result
 
-[INSERT RESULT TABLE HERE]
-
-Recommended columns:
-
 | customer_id  | purchase_number | basket_revenue | cumulative_revenue | previous_cumulative_revenue | days_from_first_purchase |
 | ------------ | --------------: | -------------: | -----------------: | --------------------------: | -----------------------: |
-| customer_001 |         [value] |        [value] |            [value] |                     [value] |                  [value] |
+| client_01526 |               3 |      18,518.00 |          18,573.00 |                       55.00 |                        0 |
+| client_02345 |               5 |      11,615.00 |          11,847.00 |                      232.00 |                      239 |
+| client_03059 |               2 |      10,747.00 |          10,762.00 |                       15.00 |                        0 |
+| client_02038 |               4 |       9,920.00 |          10,087.00 |                      167.00 |                        0 |
+| client_03342 |               5 |       6,580.00 |           6,930.00 |                      350.00 |                      577 |
+| client_03638 |               4 |       5,790.00 |           5,841.00 |                       51.00 |                        0 |
+| client_01760 |               3 |       4,435.00 |           4,466.00 |                       31.00 |                      882 |
+| client_04568 |               2 |       3,900.00 |           4,215.00 |                      315.00 |                      117 |
+| client_04449 |               6 |       3,149.00 |           3,361.00 |                      212.00 |                      208 |
+| client_03401 |               2 |       3,190.00 |           3,215.00 |                       25.00 |                        0 |
+| client_00066 |               3 |       3,120.00 |           3,202.00 |                       82.00 |                       31 |
+| client_00481 |               2 |       2,850.00 |           2,899.00 |                       49.00 |                      331 |
+| client_00556 |               5 |       2,767.00 |           2,879.00 |                      112.00 |                        0 |
+| client_04552 |               4 |       2,770.00 |           2,801.80 |                       31.80 |                       89 |
+| client_03768 |               3 |       2,600.00 |           2,705.00 |                      105.00 |                        0 |
+| client_01942 |               2 |       2,670.00 |           2,703.00 |                       33.00 |                      390 |
+| client_02340 |               2 |       2,315.00 |           2,685.00 |                      370.00 |                      516 |
+| client_02656 |               2 |       2,575.00 |           2,613.00 |                       38.00 |                        6 |
+| client_01880 |               2 |       2,420.00 |           2,585.00 |                      165.00 |                        0 |
+| client_00598 |              10 |       2,060.00 |           2,528.00 |                      468.00 |                      514 |
+
+## Local Conclusion
+
+The analysis identifies the exact purchase where each customer first crossed the selected high-value revenue threshold of €500.
+
+In the strongest cases, customers crossed the threshold very early, often on purchase 2–5. However, the table also shows that the crossing was frequently driven by a single large basket rather than slow cumulative growth. For example, several customers had very low previous cumulative revenue but crossed the threshold after one high-value basket.
+
+The days_from_first_purchase column adds an important timing layer. Some customers crossed the threshold on the same day as their first purchase, while others reached it only after several months or years. This separates immediate high-value conversion from slower customer value development.
+
+From a business perspective, this supports using cumulative revenue and purchase sequence tracking for CRM segmentation. Customers who cross the threshold after repeated purchases may be better candidates for loyalty or retention campaigns, while customers who cross it immediately may represent premium-intent buyers.
 
 ## Visualization
 
