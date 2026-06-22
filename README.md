@@ -247,8 +247,6 @@ WHERE cumulative_revenue >= 500
 ORDER BY cumulative_revenue DESC;
 ```
 
-Full query: [`sql/02_high_value_threshold_crossing.sql`](sql/02_high_value_threshold_crossing.sql)
-
 ## Result
 
 | customer_id  | purchase_number | basket_revenue | cumulative_revenue | previous_cumulative_revenue | days_from_first_purchase |
