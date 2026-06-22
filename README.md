@@ -272,28 +272,19 @@ ORDER BY cumulative_revenue DESC;
 | client_01880 |               2 |       2,420.00 |           2,585.00 |                      165.00 |                        0 |
 | client_00598 |              10 |       2,060.00 |           2,528.00 |                      468.00 |                      514 |
 
-## Local Conclusion
-
-The analysis identifies the exact purchase where each customer first crossed the selected high-value revenue threshold of €500.
-
-In the strongest cases, customers crossed the threshold very early, often on purchase 2–5. However, the table also shows that the crossing was frequently driven by a single large basket rather than slow cumulative growth. For example, several customers had very low previous cumulative revenue but crossed the threshold after one high-value basket.
-
-The days_from_first_purchase column adds an important timing layer. Some customers crossed the threshold on the same day as their first purchase, while others reached it only after several months or years. This separates immediate high-value conversion from slower customer value development.
-
-From a business perspective, this supports using cumulative revenue and purchase sequence tracking for CRM segmentation. Customers who cross the threshold after repeated purchases may be better candidates for loyalty or retention campaigns, while customers who cross it immediately may represent premium-intent buyers.
-
 ## Visualization
 
 ![High Value Threshold Crossing](images/high_value_threshold_crossing.png)
 
 ## Local Conclusion
 
-[INSERT LOCAL CONCLUSION HERE]
+The chart shows that most customers who crossed the €500 cumulative revenue threshold did so relatively early, especially on the 2nd and 3rd purchase. The number of new threshold crossings gradually declines as purchase number increases, although a long tail of later crossings still exists.
 
-Example:
+This suggests that early repeat purchases are an important signal for identifying customers with high-value potential. Customers who approach or cross the threshold within the first few purchases may be strong candidates for CRM follow-up, loyalty actions, or premium product recommendations.
 
-The threshold analysis identifies customers who became high-value after multiple purchases rather than immediately. This can help the business separate one-time high spenders from customers who gradually build value through repeat behavior.
+The result table adds another layer: in many top cases, the threshold was crossed through a single large basket after relatively low previous cumulative revenue. Therefore, the business should distinguish between customers who become high-value gradually and customers who cross the threshold suddenly due to one premium purchase.
 
+The first purchase is excluded from this analysis because the goal is to detect customers who became high-value after repeated purchase behavior, not customers who were already high-value from the first order.
 ---
 
 # Analysis 3: Spend Uplift Detection
